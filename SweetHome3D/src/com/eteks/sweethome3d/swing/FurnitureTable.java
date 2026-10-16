@@ -731,6 +731,17 @@ public class FurnitureTable extends JTable implements View, Printable {
     // with printable renderers for each column
     DefaultTableColumnModel printableColumnModel = new DefaultTableColumnModel();
     TableColumnModel columnModel = getColumnModel();
+    List<TableColumn> printableColumns = new ArrayList<TableColumn>();
+    boolean levelColumnIncluded = false;
+    for (int columnIndex = 0, n = columnModel.getColumnCount(); columnIndex < n; columnIndex++) {
+      TableColumn tableColumn = columnModel.getColumn(columnIndex);
+      printableColumns.add(tableColumn);
+      levelColumnIncluded |= tableColumn.getIdentifier() == HomePieceOfFurniture.SortableProperty.LEVEL;
+    }
+    if (!levelColumnIncluded) {
+      printableColumns.add(((FurnitureTableColumnModel)columnModel).availableColumns.get(
+          HomePieceOfFurniture.SortableProperty.LEVEL));
+    }
     final DefaultTableCellRenderer defaultRenderer = new DefaultTableCellRenderer();
     defaultRenderer.setHorizontalAlignment(DefaultTableCellRenderer.CENTER);
     TableCellRenderer printableHeaderRenderer = new TableCellRenderer() {
@@ -750,8 +761,8 @@ public class FurnitureTable extends JTable implements View, Printable {
           return headerRendererLabel;
         }
       };
-    for (int columnIndex = 0, n = columnModel.getColumnCount(); columnIndex < n; columnIndex++) {
-      final TableColumn tableColumn = columnModel.getColumn(columnIndex);
+    for (TableColumn column : printableColumns) {
+      final TableColumn tableColumn = column;
       // Create a printable column from existing table column
       TableColumn printableColumn = new TableColumn();
       printableColumn.setIdentifier(tableColumn.getIdentifier());
@@ -801,12 +812,13 @@ public class FurnitureTable extends JTable implements View, Printable {
         updateTableColumnsWidth(0);
       }
       setGridColor(gridColor);
-      Printable printable = getPrintable(PrintMode.FIT_WIDTH, null, null);
-      int pageExists = printable.print(g, pageFormat, pageIndex);
-      // Restore column model and grid color to their previous values
-      setColumnModel(oldColumnModel);
-      setGridColor(oldGridColor);
-      return pageExists;
+      try {
+        Printable printable = getPrintable(PrintMode.FIT_WIDTH, null, null);
+        return printable.print(g, pageFormat, pageIndex);
+      } finally {
+        setColumnModel(oldColumnModel);
+        setGridColor(oldGridColor);
+      }
     } else {
       // Print synchronously table in Event Dispatch Thread
       // The best solution should be to be able to print out of Event Dispatch Thread
